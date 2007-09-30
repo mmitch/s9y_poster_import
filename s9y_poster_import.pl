@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: s9y_poster_import.pl,v 1.1 2007-09-30 16:36:18 mitch Exp $
+# $Id: s9y_poster_import.pl,v 1.2 2007-09-30 16:44:03 mitch Exp $
 use strict;
 use warnings;
 use Time::Local;
@@ -64,7 +64,7 @@ foreach my $entry (@entry) {
 
     # process entry
     ## TODO: localtime or gmtime??
-    $entry{TIMESTAMP} = timegm(
+    $entry{TIMESTAMP} = timelocal(
 			       substr($entry, 12, 2),
 			       substr($entry, 10, 2),
 			       substr($entry,  8, 2),
@@ -94,7 +94,7 @@ foreach my $entry (@entry) {
     foreach my $comment (sort @comment) {
 	my %comment;
 	## TODO: localtime or gmtime??
-	$comment{TIMESTAMP} = timegm(
+	$comment{TIMESTAMP} = timelocal(
 				     substr($comment, 12, 2),
 				     substr($comment, 10, 2),
 				     substr($comment,  8, 2),
@@ -130,7 +130,7 @@ foreach my $entry (@entry) {
 	my %trackback;
 
 	## TODO: localtime or gmtime??
-	$trackback{TIMESTAMP} = timegm(
+	$trackback{TIMESTAMP} = timelocal(
 				     substr($trackback, 12, 2),
 				     substr($trackback, 10, 2),
 				     substr($trackback,  8, 2),
