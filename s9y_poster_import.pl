@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: s9y_poster_import.pl,v 1.1 2007-09-30 16:36:18 mitch Exp $
+# $Id: s9y_poster_import.pl,v 1.1.1.1 2007-09-30 16:36:18 mitch Exp $
 use strict;
 use warnings;
 use Time::Local;
