@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: s9y_poster_import.pl,v 1.4 2007-10-03 10:00:26 mitch Exp $
+# $Id: s9y_poster_import.pl,v 1.5 2007-10-03 10:01:50 mitch Exp $
 use strict;
 use warnings;
 use Time::Local;
@@ -201,7 +201,11 @@ foreach my $entry (@entry) {
 	$get_category->execute();
 	if (my $ref = $get_category->fetchrow_hashref()) {
 	    my $insert_category =
-		sprintf('INSERT INTO %sentrycat (entryid, categoryid) VALUES ( %d, %d )', $entryid, $ref->{categoryid} + 0);
+		sprintf('INSERT INTO %sentrycat (entryid, categoryid) VALUES ( %d, %d )',
+			$tableprefix,
+			$entryid,
+			$ref->{categoryid} + 0
+			);
 	    $dbh->do($insert_category);
 	}
     }
