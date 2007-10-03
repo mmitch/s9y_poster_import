@@ -1,27 +1,40 @@
 #!/usr/bin/perl
-# $Id: s9y_poster_import.pl,v 1.2 2007-09-30 16:44:03 mitch Exp $
+# $Id: s9y_poster_import.pl,v 1.3 2007-10-03 09:56:17 mitch Exp $
 use strict;
 use warnings;
 use Time::Local;
 use Data::Dumper;
 use DBI;
 
-my $posterdir = $ARGV[0];
+# this script imports a poster blog ( ) into Serendipity (www.s9y.org)
+# it has been tested with poster 1.0.6 and s9y 
+#
+# 2007 (c) by Christian Garbs <mitch@cgarbs.de>
+# licensed under GNU GPL v2
+#
+# USAGE:
+# 
+# 1. edit below to set up the database connection and your S9Y table prefix
+# 2. run this script with the poster data directory as first argument
 
-die "needs poster data directory as first argument" unless defined $posterdir and $posterdir ne '';
-
-# get database connection
 my $dbh = DBI->connect(
 		       'DBI:mysql:database=serendipity;host=localhost;port=3306',
-		       'serendipity',
-		       'ihego906',
+		       'serendipity',  # username
+		       'ihego906',     # password
 		       {'PrintError' => 1,
 			'PrintWarn' => 1,
 			'ShowErrorStatement' => 1,
-			    
 			},
 		       # {'RaiseError' => 1}
 		       );
+
+my $tableprefix = 'serendipity_';
+
+###################################################################################################
+
+my $posterdir = $ARGV[0];
+
+die "needs poster data directory as first argument" unless defined $posterdir and $posterdir ne '';
 
 # use utf8
 $dbh->do('SET NAMES utf8');
@@ -164,14 +177,16 @@ foreach my $entry (@entry) {
 
     # save entry
     my $insert_entry =
-	sprintf('INSERT INTO serendipity_entries (title, timestamp, body, comments, trackbacks, author, authorid ) VALUES ( %s, %d, %s, %d, %d, %s, %d )',
+	sprintf('INSERT INTO %sentries (title, timestamp, body, comments, trackbacks, author, authorid ) VALUES ( %s, %d, %s, %d, %d, %s, %d )',
+		$tableprefix,
 		$dbh->quote($entry{TITLE}),
 		$entry{TIMESTAMP} + 0,
 		$dbh->quote($entry{BODY}),
 		0,
 		0,
 		$dbh->quote($entry{AUTHOR}),
-		1);
+		1
+		);
 
 #    print "$insert_entry\n";
     $dbh->do($insert_entry);
@@ -182,11 +197,14 @@ foreach my $entry (@entry) {
     if (exists $category{$entry{CATEGORY}}) {
 	
 	my $get_category =
-	    $dbh->prepare('SELECT categoryid FROM serendipity_category WHERE category_name = '.$dbh->quote($category{$entry{CATEGORY}}));
+	    $dbh->prepare(sprintf('SELECT categoryid FROM %scategory WHERE category_name = %s',
+				  $tableprefix,
+				  $dbh->quote($category{$entry{CATEGORY}})
+				  );
 	$get_category->execute();
 	if (my $ref = $get_category->fetchrow_hashref()) {
 	    my $insert_category =
-		sprintf('INSERT INTO serendipity_entrycat (entryid, categoryid) VALUES ( %d, %d )', $entryid, $ref->{categoryid} + 0);
+		sprintf('INSERT INTO %sentrycat (entryid, categoryid) VALUES ( %d, %d )', $entryid, $ref->{categoryid} + 0);
 	    # print "$insert_category\n";
 	    $dbh->do($insert_category);
 	}
@@ -195,14 +213,16 @@ foreach my $entry (@entry) {
     # save comments
     foreach my $comment (@{$entry{COMMENTS}}) {
 	my $insert_comment =
-	    sprintf('INSERT INTO serendipity_comments (entry_id, timestamp, author, url, body, type, status) VALUES ( %d, %d, %s, %s, %s, %s, %s )', 
+	    sprintf('INSERT INTO %scomments (entry_id, timestamp, author, url, body, type, status) VALUES ( %d, %d, %s, %s, %s, %s, %s )', 
+		    $tableprefix,
 		    $entryid,
 		    $comment->{TIMESTAMP},
 		    $dbh->quote($comment->{AUTHOR}),
 		    exists $comment->{URL} ? $dbh->quote($comment->{URL}) : 'NULL',
 		    $dbh->quote($comment->{BODY}),
 		    $dbh->quote('NORMAL'),
-		    $dbh->quote('pending'));
+		    $dbh->quote('pending')
+		    );
 	# print "$insert_comment\n";
 	$dbh->do($insert_comment);
     }
@@ -210,14 +230,16 @@ foreach my $entry (@entry) {
     # save trackbacks
     foreach my $trackback (@{$entry{TRACKBACKS}}) {
 	my $insert_trackback =
-	    sprintf('INSERT INTO serendipity_comments (entry_id, timestamp, author, url, body, type, status) VALUES ( %d, %d, %s, %s, %s, %s, %s )', 
-		    $entryid,
+	    sprintf('INSERT INTO %scomments (entry_id, timestamp, author, url, body, type, status) VALUES ( %d, %d, %s, %s, %s, %s, %s )',
+		    $tableprefix,
+ 		    $entryid,
 		    $trackback->{TIMESTAMP},
 		    $dbh->quote($trackback->{BLOG_NAME}),
 		    exists $trackback->{URL} ? $dbh->quote($trackback->{URL}) : 'NULL',
 		    $dbh->quote($trackback->{BODY}),
 		    $dbh->quote('TRACKBACK'),
-		    $dbh->quote('pending'));
+		    $dbh->quote('pending')
+		    );
 	# print "$insert_trackback\n";
 	$dbh->do($insert_trackback);
     }
@@ -228,8 +250,8 @@ foreach my $entry (@entry) {
 
 __DATA__
 
-# restore after test run
-
+# SQL to delete imports after test run
+# (I want to keep my entry 1, it's a real test entry that's not imported from poster)
 delete from serendipity_comments where entry_id != 1;
 delete from serendipity_entries where id != 1;
 delete from serendipity_entrycat where entryid != 1;
