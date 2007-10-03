@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: s9y_poster_import.pl,v 1.3 2007-10-03 09:56:17 mitch Exp $
+# $Id: s9y_poster_import.pl,v 1.4 2007-10-03 10:00:26 mitch Exp $
 use strict;
 use warnings;
 use Time::Local;
@@ -30,14 +30,17 @@ my $dbh = DBI->connect(
 
 my $tableprefix = 'serendipity_';
 
+# use utf8?
+$dbh->do('SET NAMES utf8');
+
 ###################################################################################################
 
+# process arguments
 my $posterdir = $ARGV[0];
-
 die "needs poster data directory as first argument" unless defined $posterdir and $posterdir ne '';
 
-# use utf8
-$dbh->do('SET NAMES utf8');
+# global variables
+my %mapping;
 
 # read categories
 my %category;
@@ -58,11 +61,11 @@ print @entry . " entries found.\n";
 # process entries
 foreach my $entry (@entry) {
     print "entry $entry...\n";
-
+    
     my $dir = "$posterdir/$entry";
     my $line;
     my %entry;
-
+    
     # read comments
     opendir COMMENT, "$dir/comments/" or die "can't opendir `$dir/comments/': $!";
     my @comment = sort grep { -f "$dir/comments/$_" and $_ =~ /^\d{14}$/ } readdir(COMMENT);
@@ -76,7 +79,6 @@ foreach my $entry (@entry) {
     print "  " . @trackback . " trackbacks found.\n";
 
     # process entry
-    ## TODO: localtime or gmtime??
     $entry{TIMESTAMP} = timelocal(
 			       substr($entry, 12, 2),
 			       substr($entry, 10, 2),
@@ -106,7 +108,6 @@ foreach my $entry (@entry) {
     $entry{COMMENTS} = [];
     foreach my $comment (sort @comment) {
 	my %comment;
-	## TODO: localtime or gmtime??
 	$comment{TIMESTAMP} = timelocal(
 				     substr($comment, 12, 2),
 				     substr($comment, 10, 2),
@@ -142,7 +143,6 @@ foreach my $entry (@entry) {
     foreach my $trackback (sort @trackback) {
 	my %trackback;
 
-	## TODO: localtime or gmtime??
 	$trackback{TIMESTAMP} = timelocal(
 				     substr($trackback, 12, 2),
 				     substr($trackback, 10, 2),
@@ -169,12 +169,9 @@ foreach my $entry (@entry) {
 	close TRACKBACK or die "can't close `$dir/trackbacks/$trackback': $!";
 	push @{$entry{TRACKBACKS}}, {%trackback};
     }
-
+    
     print "\n";
-
-
-##    next unless @{$entry{TRACKBACKS}} > 0 and @{$entry{COMMENTS}} > 0;
-
+    
     # save entry
     my $insert_entry =
 	sprintf('INSERT INTO %sentries (title, timestamp, body, comments, trackbacks, author, authorid ) VALUES ( %s, %d, %s, %d, %d, %s, %d )',
@@ -187,12 +184,12 @@ foreach my $entry (@entry) {
 		$dbh->quote($entry{AUTHOR}),
 		1
 		);
-
-#    print "$insert_entry\n";
+    
     $dbh->do($insert_entry);
-
+    
     my $entryid = $dbh->last_insert_id(undef, undef, undef, undef);
-
+    $mapping{$entry} = $entryid;
+    
     # save category
     if (exists $category{$entry{CATEGORY}}) {
 	
@@ -200,16 +197,15 @@ foreach my $entry (@entry) {
 	    $dbh->prepare(sprintf('SELECT categoryid FROM %scategory WHERE category_name = %s',
 				  $tableprefix,
 				  $dbh->quote($category{$entry{CATEGORY}})
-				  );
+				  ));
 	$get_category->execute();
 	if (my $ref = $get_category->fetchrow_hashref()) {
 	    my $insert_category =
 		sprintf('INSERT INTO %sentrycat (entryid, categoryid) VALUES ( %d, %d )', $entryid, $ref->{categoryid} + 0);
-	    # print "$insert_category\n";
 	    $dbh->do($insert_category);
 	}
     }
-
+    
     # save comments
     foreach my $comment (@{$entry{COMMENTS}}) {
 	my $insert_comment =
@@ -223,7 +219,6 @@ foreach my $entry (@entry) {
 		    $dbh->quote('NORMAL'),
 		    $dbh->quote('pending')
 		    );
-	# print "$insert_comment\n";
 	$dbh->do($insert_comment);
     }
 
@@ -240,13 +235,14 @@ foreach my $entry (@entry) {
 		    $dbh->quote('TRACKBACK'),
 		    $dbh->quote('pending')
 		    );
-	# print "$insert_trackback\n";
 	$dbh->do($insert_trackback);
     }
-
-##    exit;
-
+	
 }
+    
+# print mapping
+print "\nmapped entries:\n";
+print "$_ $mapping{$_}\n" foreach (sort keys %mapping);
 
 __DATA__
 
