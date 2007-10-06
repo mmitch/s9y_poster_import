@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: s9y_poster_import.pl,v 1.5 2007-10-03 10:01:50 mitch Exp $
+# $Id: s9y_poster_import.pl,v 1.6 2007-10-06 12:17:23 mitch Exp $
 use strict;
 use warnings;
 use Time::Local;
@@ -7,7 +7,7 @@ use Data::Dumper;
 use DBI;
 
 # this script imports a poster blog ( ) into Serendipity (www.s9y.org)
-# it has been tested with poster 1.0.6 and s9y 
+# it has been tested with poster 1.0.8 and s9y 
 #
 # 2007 (c) by Christian Garbs <mitch@cgarbs.de>
 # licensed under GNU GPL v2
