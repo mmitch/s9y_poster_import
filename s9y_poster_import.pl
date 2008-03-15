@@ -51,6 +51,28 @@ while (my $line = <CATEGORY>) {
 }
 close CATEGORY or die "can't open `$posterdir/../categories': $1";
 
+# read and process users
+my %user;
+open USER, '<', "$posterdir/../users" or die "can't open `$posterdir/../users': $1";
+while (my $line = <USER>) {
+    my ($user, $pwdhash, $name, $url, $date) = split /(?<!\\):/, $line, 5;
+
+    my $insert_entry =
+	sprintf('INSERT INTO %sauthors (realname, username, password ) VALUES ( %s, %s, %s )',
+		$tableprefix,
+		$dbh->quote($name),
+		$dbh->quote($user),
+		$dbh->quote($pwdhash)
+		);
+    
+    $dbh->do($insert_entry);
+    
+    $user{$user} = $dbh->last_insert_id(undef, undef, undef, undef);
+
+    print "user $user imported as #$user{$user}.\n";
+}
+close USER or die "can't open `$posterdir/../users': $1";
+
 # read entries
 opendir ENTRY, $posterdir or die "can't opendir `$posterdir': $!";
 my @entry = sort grep { -d "$posterdir/$_" and $_ =~ /^\d{14}$/ } readdir(ENTRY);
@@ -174,7 +196,7 @@ foreach my $entry (@entry) {
     
     # save entry
     my $insert_entry =
-	sprintf('INSERT INTO %sentries (title, timestamp, body, comments, trackbacks, author, authorid ) VALUES ( %s, %d, %s, %d, %d, %s, %d )',
+	sprintf('INSERT INTO %sentries (title, timestamp, body, comments, trackbacks, author, authorid, isdraft ) VALUES ( %s, %d, %s, %d, %d, %s, %d, %s )',
 		$tableprefix,
 		$dbh->quote($entry{TITLE}),
 		$entry{TIMESTAMP} + 0,
@@ -182,7 +204,8 @@ foreach my $entry (@entry) {
 		0,
 		0,
 		$dbh->quote($entry{AUTHOR}),
-		1
+		$user{$entry{AUTHOR}},
+		$dbh->quote('false')
 		);
     
     $dbh->do($insert_entry);
@@ -256,4 +279,4 @@ delete from serendipity_comments where entry_id != 1;
 delete from serendipity_entries where id != 1;
 delete from serendipity_entrycat where entryid != 1;
 delete from serendipity_references where entry_id != 1;
-
+delete from serendipity_authors where authorid != 1;
